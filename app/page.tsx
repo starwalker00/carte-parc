@@ -1,103 +1,108 @@
-import Image from "next/image";
+'use client';
+
+import { useRef, useEffect } from 'react';
+import maplibregl from 'maplibre-gl';
+import 'maplibre-gl/dist/maplibre-gl.css';
+import type { FeatureCollection, Point } from 'geojson';
+
+const arbres: FeatureCollection<Point, { espece: string }> = {
+  type: "FeatureCollection",
+  features: [
+    {
+      type: "Feature",
+      properties: { espece: "Chêne" },
+      geometry: { type: "Point", coordinates: [-1.660, 48.1134] },
+    },
+    {
+      type: "Feature",
+      properties: { espece: "Érable" },
+      geometry: { type: "Point", coordinates: [-1.661, 48.1136] },
+    },
+    {
+      type: "Feature",
+      properties: { espece: "Chêne" },
+      geometry: { type: "Point", coordinates: [-1.659, 48.1132] },
+    },
+  ],
+};
+
+
+// https://geoservices.ign.fr/documentation/services/api-et-services-ogc/tuiles-vectorielles-tmswmts/styles
+// const STYLE = 'https://data.geopf.fr/annexes/ressources/vectorTiles/styles/PLAN.IGN/standard.json';
+const STYLE = "/plan-ign-standard.json"
 
 export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm/6 text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-[family-name:var(--font-geist-mono)] font-semibold">
-              app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+  const mapContainer = useRef<HTMLDivElement>(null);
+  const map = useRef<maplibregl.Map | null>(null);
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
-        </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
+  useEffect(() => {
+    if (map.current) return;
+
+    if (!mapContainer.current) return;
+
+    map.current = new maplibregl.Map({
+      container: mapContainer.current,
+      style: STYLE,
+      center: [-1.660801, 48.113455],
+      zoom: 17,
+      maxZoom: 22 //18 max disponible dans le service web pbf, configuré à la main dans /public/plan-ign-standard.json
+    });
+
+    map.current.addControl(new maplibregl.NavigationControl());
+
+    map.current.on('load', () => {
+      map.current?.addSource('arbres', { type: 'geojson', data: arbres });
+      map.current?.addLayer({
+        id: 'arbres-points',
+        type: 'circle',
+        source: 'arbres',
+        paint: {
+          'circle-radius': 6,
+          'circle-color': [
+            'match',
+            ['get', 'espece'],
+            'Chêne', '#8B4513',
+            'Érable', '#FF4500',
+            '#228B22',
+          ],
+          'circle-stroke-color': '#000',
+          'circle-stroke-width': 1,
+        },
+      });
+
+      map.current!.on('click', 'arbres-points', (e) => {
+        if (!e.features || e.features.length === 0) return;
+
+        const feature = e.features[0];
+        const coordinates = feature.geometry.type === 'Point'
+          ? [feature.geometry.coordinates[0], feature.geometry.coordinates[1]] as [number, number]
+          : null;
+        const espece = feature.properties?.espece ?? 'Inconnu';
+
+        if (!coordinates) return;
+
+        while (Math.abs(e.lngLat.lng - coordinates[0]) > 180) {
+          coordinates[0] += e.lngLat.lng > coordinates[0] ? 360 : -360;
+        }
+
+        new maplibregl.Popup()
+          .setLngLat(coordinates)
+          .setHTML(`<strong>Espèce:</strong> ${espece}`)
+          .addTo(map.current!);
+      });
+
+      map.current!.on('mouseenter', 'arbres-points', () => {
+        map.current!.getCanvas().style.cursor = 'pointer';
+      });
+      map.current!.on('mouseleave', 'arbres-points', () => {
+        map.current!.getCanvas().style.cursor = '';
+      });
+    });
+
+    return () => map.current?.remove();
+  }, []);
+
+  return (
+    <div ref={mapContainer} style={{ width: '100vw', height: '100vh' }} />
   );
 }
